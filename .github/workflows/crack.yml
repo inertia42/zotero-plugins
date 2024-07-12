@@ -28,6 +28,11 @@ jobs:
         PLUGINS_TO_UPDATE=""
 
         for PLUGIN in $(jq -r '.addons | keys[]' new_update.json); do
+          if [[ "$PLUGIN" == *"gpt"* ]]; then
+            echo "Skipping $PLUGIN as it contains 'gpt'."
+            continue
+          fi
+
           NEW_VERSION=$(jq -r ".addons[\"$PLUGIN\"].updates[0].version" new_update.json)
           if jq -e ".addons[\"$PLUGIN\"]" $OLD_UPDATE_FILE > /dev/null; then
             OLD_VERSION=$(jq -r ".addons[\"$PLUGIN\"].updates[0].version" $OLD_UPDATE_FILE)
