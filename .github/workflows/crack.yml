@@ -1,4 +1,4 @@
-name: Check and Update
+name: Update for style and reference plugins
 
 on:
   schedule:
@@ -54,10 +54,15 @@ jobs:
       run: |
         for PLUGIN in ${{ env.plugins_to_update }}; do
           UPDATE_LINK=$(jq -r ".addons[\"$PLUGIN\"].updates[0].update_link" new_update.json)
+          NEW_VERSION=$(jq -r ".addons[\"$PLUGIN\"].updates[0].version" new_update.json)
           FILE_NAME=$(basename $UPDATE_LINK)
           curl -L -o $FILE_NAME $UPDATE_LINK
           unzip $FILE_NAME -d extracted
           cd extracted
+          # 更新 manifest.json 中的 update_url
+          if [ -f manifest.json ]; then
+            sed -i 's#https://gitee.com/muisedestiny/plugins/raw/master/#https://github.com/inertia42/zotero-plugins/raw/main/#g' manifest.json
+          fi
           TARGET_FILE=$(find chrome/content/scripts -name '*.js' -type f)
           # 使用 webcrack 进行反混淆
           webcrack $TARGET_FILE -o output-dir
