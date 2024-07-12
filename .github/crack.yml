@@ -1,0 +1,88 @@
+name: Update style and reference
+
+on:
+  schedule:
+    - cron: '0 10 * * *'  # 每小时检查一次
+  workflow_dispatch:
+
+jobs:
+  check_update:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y jq zip npm
+        npm install -g webcrack
+
+    - name: Check for updates
+      id: check_update
+      run: |
+        curl -o new_update.json https://gitee.com/MuiseDestiny/plugins/raw/master/update.json
+        OLD_UPDATE_FILE=update.json
+        UPDATE_NEEDED=false
+        PLUGINS_TO_UPDATE=""
+
+        for PLUGIN in $(jq -r '.addons | keys[]' new_update.json); do
+          NEW_VERSION=$(jq -r ".addons[\"$PLUGIN\"].updates[0].version" new_update.json)
+          if jq -e ".addons[\"$PLUGIN\"]" $OLD_UPDATE_FILE > /dev/null; then
+            OLD_VERSION=$(jq -r ".addons[\"$PLUGIN\"].updates[0].version" $OLD_UPDATE_FILE)
+            if [ "$NEW_VERSION" != "$OLD_VERSION" ]; then
+              UPDATE_NEEDED=true
+              PLUGINS_TO_UPDATE="$PLUGINS_TO_UPDATE $PLUGIN"
+            fi
+          else
+            UPDATE_NEEDED=true
+            PLUGINS_TO_UPDATE="$PLUGINS_TO_UPDATE $PLUGIN"
+          fi
+        done
+
+        echo "update_needed=$UPDATE_NEEDED" >> $GITHUB_ENV
+        echo "plugins_to_update=$PLUGINS_TO_UPDATE" >> $GITHUB_ENV
+
+    - name: Process updates
+      if: env.update_needed == 'true'
+      run: |
+        for PLUGIN in ${{ env.plugins_to_update }}; do
+          UPDATE_LINK=$(jq -r ".addons[\"$PLUGIN\"].updates[0].update_link" new_update.json)
+          FILE_NAME=$(basename $UPDATE_LINK)
+          curl -L -o $FILE_NAME $UPDATE_LINK
+          unzip $FILE_NAME -d extracted
+          cd extracted
+          TARGET_FILE=$(find chrome/content/scripts -name '*.js' -type f)
+          # 使用 webcrack 进行反混淆
+          webcrack $TARGET_FILE -o output-dir
+          UNOBFUSCATED_FILE=$(find output-dir -name '*.js' -type f)
+          # 对反混淆后的文件进行字符替换
+          sed -i 's/Zotero.Users.getCurrentName()/"Dufangfang"/g' $UNOBFUSCATED_FILE
+          # 复制修改后的文件回原路径
+          cp $UNOBFUSCATED_FILE $TARGET_FILE
+          # 重新封装为 zip 并重命名为 xpi
+          zip -r ../$FILE_NAME *
+          cd ..
+          rm -rf extracted
+
+          # 更新仓库中的 update.json 对应的版本号和 update_link
+          NEW_UPDATE_LINK="https://github.com/inertia42/zotero-plugins/raw/main/$FILE_NAME"
+          jq --arg plugin "$PLUGIN" --arg version "$NEW_VERSION" --arg link "$NEW_UPDATE_LINK" \
+            '.addons[$plugin].updates[0].version = $version | .addons[$plugin].updates[0].update_link = $link' \
+            update.json > updated_update.json
+          mv updated_update.json update.json
+        done
+
+    - name: Commit and push changes
+      if: env.update_needed == 'true'
+      run: |
+        git config --global user.name 'github-actions'
+        git config --global user.email 'github-actions@github.com'
+        for PLUGIN in ${{ env.plugins_to_update }}; do
+          FILE_NAME=$(basename $(jq -r ".addons[\"$PLUGIN\"].updates[0].update_link" update.json))
+          git add $FILE_NAME
+        done
+        git add update.json
+        git commit -m 'Update from new update.json'
+        git push
