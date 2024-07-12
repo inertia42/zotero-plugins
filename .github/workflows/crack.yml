@@ -1,8 +1,8 @@
-name: Update style and reference
+name: Check and Update
 
 on:
   schedule:
-    - cron: '0 10 * * *'  # 每小时检查一次
+    - cron: '0 10 * * *'  # 每天上午十点运行一次
   workflow_dispatch:
 
 jobs:
@@ -61,18 +61,22 @@ jobs:
           TARGET_FILE=$(find chrome/content/scripts -name '*.js' -type f)
           # 使用 webcrack 进行反混淆
           webcrack $TARGET_FILE -o output-dir
+          # 打印 output-dir 下的所有文件名
+          find output-dir -type f -name '*.js'
           UNOBFUSCATED_FILE=$(find output-dir -name '*.js' -type f)
           # 对反混淆后的文件进行字符替换
           sed -i 's/Zotero.Users.getCurrentName()/"Dufangfang"/g' $UNOBFUSCATED_FILE
           # 复制修改后的文件回原路径
           cp $UNOBFUSCATED_FILE $TARGET_FILE
+          # 删除 output-dir
+          rm -rf output-dir
           # 重新封装为 zip 并重命名为 xpi
-          zip -r ../$FILE_NAME *
+          zip -r -X ../$FILE_NAME *
           cd ..
           rm -rf extracted
 
           # 更新仓库中的 update.json 对应的版本号和 update_link
-          NEW_UPDATE_LINK="https://github.com/inertia42/zotero-plugins/raw/main/$FILE_NAME"
+          NEW_UPDATE_LINK="https://github.com/inertia42/zotero-plugins/raw/master/$FILE_NAME"
           jq --arg plugin "$PLUGIN" --arg version "$NEW_VERSION" --arg link "$NEW_UPDATE_LINK" \
             '.addons[$plugin].updates[0].version = $version | .addons[$plugin].updates[0].update_link = $link' \
             update.json > updated_update.json
@@ -87,7 +91,8 @@ jobs:
         for PLUGIN in ${{ env.plugins_to_update }}; do
           FILE_NAME=$(basename $(jq -r ".addons[\"$PLUGIN\"].updates[0].update_link" update.json))
           git add $FILE_NAME
+          NEW_VERSION=$(jq -r ".addons[\"$PLUGIN\"].updates[0].version" update.json)
+          git commit -m "Update $PLUGIN to version $NEW_VERSION"
         done
         git add update.json
-        git commit -m 'Update from new update.json'
         git push
