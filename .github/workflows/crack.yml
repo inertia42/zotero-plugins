@@ -76,7 +76,7 @@ jobs:
           rm -rf extracted
 
           # 更新仓库中的 update.json 对应的版本号和 update_link
-          NEW_UPDATE_LINK="https://github.com/inertia42/zotero-plugins/raw/master/$FILE_NAME"
+          NEW_UPDATE_LINK="https://github.com/inertia42/zotero-plugins/raw/main/$FILE_NAME"
           jq --arg plugin "$PLUGIN" --arg version "$NEW_VERSION" --arg link "$NEW_UPDATE_LINK" \
             '.addons[$plugin].updates[0].version = $version | .addons[$plugin].updates[0].update_link = $link' \
             update.json > updated_update.json
@@ -88,11 +88,15 @@ jobs:
       run: |
         git config --global user.name 'github-actions'
         git config --global user.email 'github-actions@github.com'
+        COMMIT_MESSAGE="Update plugins: "
         for PLUGIN in ${{ env.plugins_to_update }}; do
           FILE_NAME=$(basename $(jq -r ".addons[\"$PLUGIN\"].updates[0].update_link" update.json))
-          git add $FILE_NAME
           NEW_VERSION=$(jq -r ".addons[\"$PLUGIN\"].updates[0].version" update.json)
-          git commit -m "Update $PLUGIN to version $NEW_VERSION"
+          git add $FILE_NAME
+          PLUGIN_NAME=$(basename $FILE_NAME .xpi)
+          COMMIT_MESSAGE+="update $PLUGIN_NAME to $NEW_VERSION, "
         done
         git add update.json
+        COMMIT_MESSAGE=${COMMIT_MESSAGE%, }  # 移除结尾的逗号和空格
+        git commit -m "$COMMIT_MESSAGE"
         git push
