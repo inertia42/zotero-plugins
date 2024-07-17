@@ -2,7 +2,7 @@ name: Update for style and reference plugins
 
 on:
   schedule:
-    - cron: '0 6 * * *'  # 每天下午两点运行一次
+    - cron: '0 */6 * * *'  # 每天六个小时运行一次
   workflow_dispatch:
 
 jobs:
