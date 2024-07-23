@@ -16,7 +16,7 @@
     "zoterostyle@polygon.org": {
       "updates": [
         {
-          "version": "4.5.8",
+          "version": "4.6.0",
           "update_link": "https://github.com/inertia42/zotero-plugins/raw/main/zotero-style.xpi",
           "applications": {
             "zotero": {
