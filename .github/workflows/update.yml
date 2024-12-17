@@ -70,7 +70,7 @@ jobs:
           find output-dir -type f -name '*.js'
           UNOBFUSCATED_FILE=$(find output-dir -name '*.js' -type f)
           # 对反混淆后的文件进行字符替换
-          sed -i 's/U2FsdGVkX19wifvNzaj0cxJkavd5eQR\/n31tNgNqi3qQ9bBEAJWtCddpAOum73Hx");/&\n    return true/g' $UNOBFUSCATED_FILE
+          sed -i '0,/U2FsdGVkX19wifvNzaj0cxJkavd5eQR\/n31tNgNqi3qQ9bBEAJWtCddpAOum73Hx");/{s/U2FsdGVkX19wifvNzaj0cxJkavd5eQR\/n31tNgNqi3qQ9bBEAJWtCddpAOum73Hx");/&\n    return true/}' $UNOBFUSCATED_FILE
           # 复制修改后的文件回原路径
           cp $UNOBFUSCATED_FILE $TARGET_FILE
           # 删除 output-dir
