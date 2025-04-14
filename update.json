@@ -3,7 +3,7 @@
     "zoteroreference@polygon.org": {
       "updates": [
         {
-          "version": "1.4.1",
+          "version": "1.4.2",
           "update_link": "https://github.com/inertia42/zotero-plugins/raw/main/zotero-reference.xpi",
           "applications": {
             "zotero": {
