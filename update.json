@@ -29,7 +29,7 @@
     "zoterogpt@polygon.org": {
       "updates": [
         {
-          "version": "2.0.4",
+          "version": "2.0.5",
           "update_link": "https://github.com/inertia42/zotero-plugins/raw/main/zotero-gpt.xpi",
           "applications": {
             "zotero": {
